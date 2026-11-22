@@ -13,31 +13,45 @@ jobs:
       - name: Install Android SDK 36 & NDK 27.1.12297006
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "ndk;27.1.12297006"
-      - name: Install Build Dependencies & Prepare Upstreams
+      - name: Install Build Dependencies & Patch Upstream Script
         run: |
           set -e
           sudo apt-get update
           sudo apt-get install -y autoconf automake libtool pkg-config gperf gettext bison flex libgmp-dev perl
+          cat << 'EOF' >> VoAnyLib/prepare-upstreams.py
+
+          import subprocess, os, glob
+          ss_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".upstream", "strongswan")
+          if os.path.exists(ss_dir):
+              if not os.path.exists(os.path.join(ss_dir, "Android.common.mk")):
+                  subprocess.run(["autoreconf", "-i"], cwd=ss_dir, check=False)
+                  subprocess.run(["./configure", "--disable-defaults"], cwd=ss_dir, check=False)
+                  mk_in = os.path.join(ss_dir, "Android.common.mk.in")
+                  mk_out = os.path.join(ss_dir, "Android.common.mk")
+                  if not os.path.exists(mk_out) and os.path.exists(mk_in):
+                      with open(mk_in) as f: txt = f.read()
+                      for k, v in [("@PACKAGE_VERSION@","5.9.14"),("@PACKAGE_VERSION_MAJOR@","5"),("@PACKAGE_VERSION_MINOR@","9"),("@PACKAGE_VERSION_MICRO@","14"),("@PACKAGE_VERSION_REVIEW@","")]:
+                          txt = txt.replace(k, v)
+                      with open(mk_out, "w") as f: f.write(txt)
+              asn1_dir = os.path.join(ss_dir, "src", "libstrongswan", "asn1")
+              if not os.path.exists(os.path.join(asn1_dir, "oid.c")):
+                  os.system(f"cd '{asn1_dir}' && perl oid.pl oid.txt > oid.c && perl oid.pl -h oid.txt > oid.h")
+              prop_dir = os.path.join(ss_dir, "src", "libstrongswan", "crypto", "proposal")
+              if not os.path.exists(os.path.join(prop_dir, "proposal_keywords_static.c")):
+                  os.system(f"cd '{prop_dir}' && gperf -N proposal_get_token_static -m 10 -C -G -c -t -D < proposal_keywords_static.txt > proposal_keywords_static.c")
+                  with open(os.path.join(prop_dir, "proposal_keywords_static.h"), "w") as f:
+                      f.write("const proposal_token_t *proposal_get_token_static(register const char *str, register size_t len);\n")
+              for yfile in glob.glob(os.path.join(ss_dir, "**", "*.y"), recursive=True):
+                  cfile = yfile[:-2] + ".c"
+                  if not os.path.exists(cfile):
+                      os.system(f"cd '{os.path.dirname(yfile)}' && bison -d -o '{os.path.basename(cfile)}' '{os.path.basename(yfile)}'")
+              for lfile in glob.glob(os.path.join(ss_dir, "**", "*.l"), recursive=True):
+                  cfile = lfile[:-2] + ".c"
+                  hfile = lfile[:-2] + ".h"
+                  if not os.path.exists(cfile):
+                      os.system(f"cd '{os.path.dirname(lfile)}' && flex -o '{os.path.basename(cfile)}' --header-file='{os.path.basename(hfile)}' '{os.path.basename(lfile)}'")
+          EOF
           python3 VoAnyLib/prepare-upstreams.py
-          cd VoAnyLib/.upstream/strongswan
-          autoreconf -i
-          ./configure --disable-defaults
-          if [ ! -f "Android.common.mk" ] && [ -f "Android.common.mk.in" ]; then
-            sed 's/@PACKAGE_VERSION@/5.9.14/g; s/@PACKAGE_VERSION_MAJOR@/5/g; s/@PACKAGE_VERSION_MINOR@/9/g; s/@PACKAGE_VERSION_MICRO@/14/g; s/@PACKAGE_VERSION_REVIEW@//g' Android.common.mk.in > Android.common.mk
-          fi
-          (cd src/libstrongswan/asn1 && perl oid.pl oid.txt > oid.c && perl oid.pl -h oid.txt > oid.h)
-          (
-            cd src/libstrongswan/crypto/proposal
-            gperf -N proposal_get_token_static -m 10 -C -G -c -t -D < proposal_keywords_static.txt > proposal_keywords_static.c
-            echo 'const proposal_token_t *proposal_get_token_static(register const char *str, register size_t len);' > proposal_keywords_static.h
-          )
-          (
-            cd src/libstrongswan/settings
-            bison -d -o settings_parser.c settings_parser.y
-            flex -o settings_lexer.c --header-file=settings_lexer.h settings_lexer.l || flex -t settings_lexer.l > settings_lexer.c
-            ls -la
-          )
-          cd ../../..
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
           export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.1.12297006
