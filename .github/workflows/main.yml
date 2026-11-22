@@ -27,7 +27,9 @@ jobs:
           fi
           (cd src/libstrongswan/asn1 && perl oid.pl oid.txt > oid.c && perl oid.pl -h oid.txt > oid.h)
           (cd src/libstrongswan/crypto/proposal && gperf -N proposal_get_token -m 10 -C -G -c -t -D < proposal_keywords_static.txt > proposal_keywords_static.c)
-          ls -la src/libstrongswan/asn1/oid.c src/libstrongswan/crypto/proposal/proposal_keywords_static.c
+          (cd src/libstrongswan/settings && bison -d -o settings_parser.c settings_parser.y && flex -o settings_lexer.c settings_lexer.l)
+          find . -name "*.y" -exec sh -c 'dir=$(dirname "$1"); base=$(basename "$1" .y); [ ! -f "$dir/$base.c" ] && (cd "$dir" && bison -d -o "$base.c" "$base.y") || true' _ {} \;
+          find . -name "*.l" -exec sh -c 'dir=$(dirname "$1"); base=$(basename "$1" .l); [ ! -f "$dir/$base.c" ] && (cd "$dir" && flex -o "$base.c" "$base.l") || true' _ {} \;
           cd ../../..
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
