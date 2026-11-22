@@ -31,11 +31,6 @@ jobs:
             gperf -N proposal_get_token_static -m 10 -C -G -c -t -D < proposal_keywords_static.txt > proposal_keywords_static.c
             echo 'const proposal_token_t *proposal_get_token_static(register const char *str, register size_t len);' > proposal_keywords_static.h
           )
-          (
-            cd src/libstrongswan/settings
-            bison -d -o settings_parser.c settings_parser.y
-            flex --outfile=settings_lexer.c --header-file=settings_lexer.h settings_lexer.l
-          )
           for yfile in $(find . -name "*.y"); do
             dir=$(dirname "$yfile")
             base=$(basename "$yfile" .y)
@@ -47,7 +42,11 @@ jobs:
             dir=$(dirname "$lfile")
             base=$(basename "$lfile" .l)
             if [ ! -f "$dir/$base.c" ]; then
-              (cd "$dir" && flex --outfile="$base.c" --header-file="$base.h" "$base.l")
+              (
+                cd "$dir"
+                flex --header-file="$base.h" "$base.l"
+                [ -f "lex.yy.c" ] && mv lex.yy.c "$base.c"
+              )
             fi
           done
           cd ../../..
@@ -59,8 +58,7 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x gradlew
-          ls -la VoAnyLib/.upstream/strongswan/src/libstrongswan/settings/
-          ./gradlew :VoAnyApp:assembleDebug -PvoanyPython=python3 --offline > build.log 2>&1 || ./gradlew :VoAnyApp:assembleDebug -PvoanyPython=python3 > build.log 2>&1 || {
+          ./gradlew :VoAnyApp:assembleDebug -PvoanyPython=python3 > build.log 2>&1 || {
             echo "=== NDK 真正錯誤行 ==="
             grep -iE "Android NDK:|error:|fatal|undefined|No such file|Stop\." build.log | tail -n 35
             exit 1
