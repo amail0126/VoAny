@@ -15,6 +15,11 @@ jobs:
       - name: Install Compatible NDK (r25c)
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
+      - name: Prepare OpenSSL for strongSwan
+        run: |
+          if [ ! -f "VoAnyLib/src/main/jni/openssl/Android.mk" ]; then
+            git clone --depth 1 https://github.com/strongswan/openssl.git VoAnyLib/src/main/jni/openssl
+          fi
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build Debug APK
