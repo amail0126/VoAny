@@ -7,30 +7,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Install Compatible NDK (r25c)
+      - name: Inspect Project Build Instructions
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
-      - name: Prepare OpenSSL for strongSwan
-        run: |
-          if [ ! -f "VoAnyLib/src/main/jni/openssl/Android.mk" ]; then
-            git clone --depth 1 https://github.com/strongswan/openssl.git VoAnyLib/src/main/jni/openssl
-          fi
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-      - name: Build Debug APK
-        run: |
-          ./gradlew assembleDebug -Pandroid.ndkVersion=25.2.9519653 > build.log 2>&1 || {
-            echo "=== NDK 完整錯誤輸出 ==="
-            grep -iE "Android NDK:|error:|fatal|No such file|Stop\." build.log | tail -n 40
-            exit 1
-          }
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: VoAny-Debug-APK
-          path: "**/build/outputs/apk/**/*.apk"
+          echo "=== 1. README.md 內容 ==="
+          cat README.md || echo "無 README.md"
+          echo "=== 2. 專案內的腳本檔案 ==="
+          find . -maxdepth 4 -name "*.sh" -o -name "*openssl*"
+          echo "=== 3. Android.mk 第 70~100 行 ==="
+          sed -n '70,100p' VoAnyLib/src/main/jni/Android.mk
