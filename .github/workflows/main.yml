@@ -17,13 +17,12 @@ jobs:
         run: |
           set -e
           sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config gperf gettext bison flex
+          sudo apt-get install -y autoconf automake libtool pkg-config gperf gettext bison flex libgmp-dev
           python3 VoAnyLib/prepare-upstreams.py
-          STRONGSWAN_DIR=$(find . -type d -name "strongswan" | head -n 1)
-          echo "找到 strongSwan 路徑: $STRONGSWAN_DIR"
-          if [ -n "$STRONGSWAN_DIR" ] && [ -f "$STRONGSWAN_DIR/autogen.sh" ]; then
-            (cd "$STRONGSWAN_DIR" && ./autogen.sh)
-          fi
+          cd VoAnyLib/.upstream/strongswan
+          autoreconf -i
+          ./configure --disable-defaults
+          cd ../../..
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
           export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.1.12297006
