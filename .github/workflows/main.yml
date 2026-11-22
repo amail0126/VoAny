@@ -5,13 +5,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          submodules: recursive
-      - name: Inspect Project Build Instructions
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Install Android SDK 36 & NDK 27.1.12297006
         run: |
-          echo "=== 1. README.md 內容 ==="
-          cat README.md || echo "無 README.md"
-          echo "=== 2. 專案內的腳本檔案 ==="
-          find . -maxdepth 4 -name "*.sh" -o -name "*openssl*"
-          echo "=== 3. Android.mk 第 70~100 行 ==="
-          sed -n '70,100p' VoAnyLib/src/main/jni/Android.mk
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "ndk;27.1.12297006"
+      - name: Prepare Upstreams & Build OpenSSL 3.5.4
+        run: |
+          python3 VoAnyLib/prepare-upstreams.py
+          wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
+          tar -xzf openssl-3.5.4.tar.gz
+          export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.1.12297006
+          export OPENSSL_SRC=$PWD/openssl-3.5.4
+          bash VoAnyLib/native/build-openssl.sh
+      - name: Build Debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :VoAnyApp:assembleDebug -PvoanyPython=python3
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoAny-Debug-APK
+          path: VoAnyApp/build/outputs/apk/debug/VoAnyApp-debug.apk
