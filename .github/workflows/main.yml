@@ -19,8 +19,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y autoconf automake libtool pkg-config gperf gettext bison flex
           python3 VoAnyLib/prepare-upstreams.py
-          if [ -d ".upstream/strongswan" ] && [ ! -f ".upstream/strongswan/Android.common.mk" ]; then
-            (cd .upstream/strongswan && ./autogen.sh)
+          STRONGSWAN_DIR=$(find . -type d -name "strongswan" | head -n 1)
+          echo "找到 strongSwan 路徑: $STRONGSWAN_DIR"
+          if [ -n "$STRONGSWAN_DIR" ] && [ -f "$STRONGSWAN_DIR/autogen.sh" ]; then
+            (cd "$STRONGSWAN_DIR" && ./autogen.sh)
           fi
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
