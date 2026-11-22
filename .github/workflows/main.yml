@@ -12,13 +12,16 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - name: Install Compatible NDK (r25c)
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build Debug APK
         run: |
-          ./gradlew assembleDebug > build.log 2>&1 || {
-            echo "=== 關鍵錯誤摘要 ==="
-            grep -B 5 -A 15 "What went wrong:" build.log || tail -n 60 build.log
+          ./gradlew assembleDebug -Pandroid.ndkVersion=25.2.9519653 > build.log 2>&1 || {
+            echo "=== NDK 完整錯誤輸出 ==="
+            grep -iE "Android NDK:|error:|fatal|No such file|Stop\." build.log | tail -n 40
             exit 1
           }
       - name: Upload APK
