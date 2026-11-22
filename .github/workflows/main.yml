@@ -25,7 +25,8 @@ jobs:
           if [ ! -f "Android.common.mk" ] && [ -f "Android.common.mk.in" ]; then
             sed 's/@PACKAGE_VERSION@/5.9.14/g; s/@PACKAGE_VERSION_MAJOR@/5/g; s/@PACKAGE_VERSION_MINOR@/9/g; s/@PACKAGE_VERSION_MICRO@/14/g; s/@PACKAGE_VERSION_REVIEW@//g' Android.common.mk.in > Android.common.mk
           fi
-          make -C src/libstrongswan asn1/oid.c asn1/oid.h || true
+          make -C src/libstrongswan BUILT_SOURCES || true
+          make -C src/libcharon BUILT_SOURCES || true
           cd ../../..
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
