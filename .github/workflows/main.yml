@@ -31,8 +31,12 @@ jobs:
             gperf -N proposal_get_token_static -m 10 -C -G -c -t -D < proposal_keywords_static.txt > proposal_keywords_static.c
             echo 'const proposal_token_t *proposal_get_token_static(register const char *str, register size_t len);' > proposal_keywords_static.h
           )
-          find . -name "*.y" -exec sh -c 'dir=$(dirname "$1"); base=$(basename "$1" .y); [ ! -f "$dir/$base.c" ] && (cd "$dir" && bison -d -o "$base.c" "$base.y") || true' _ {} \;
-          find . -name "*.l" -exec sh -c 'dir=$(dirname "$1"); base=$(basename "$1" .l); [ ! -f "$dir/$base.c" ] && (cd "$dir" && flex --outfile="$base.c" --header-file="$base.h" "$base.l") || true' _ {} \;
+          (
+            cd src/libstrongswan/settings
+            bison -d -o settings_parser.c settings_parser.y
+            flex -o settings_lexer.c --header-file=settings_lexer.h settings_lexer.l || flex -t settings_lexer.l > settings_lexer.c
+            ls -la
+          )
           cd ../../..
           wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz
           tar -xzf openssl-3.5.4.tar.gz
